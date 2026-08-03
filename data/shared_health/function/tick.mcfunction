@@ -25,6 +25,8 @@ execute as @a[tag=hp_sync] unless score @s hp_init matches 1 run scoreboard play
 tag @a remove hp_died
 execute as @a[tag=hp_sync] if score @s hp_cur matches 0 if score @s hp_prev matches 1.. run tag @s add hp_died
 execute if entity @a[tag=hp_died] as @a[tag=hp_sync] run damage @s 1000 minecraft:generic_kill
+# Reset hp_sprev=0 pour tous : bloque le faux "soin" au respawn (hp_sprev matches 1.. filtrera)
+execute if entity @a[tag=hp_died] as @a[tag=hp_sync] run scoreboard players set @s hp_sprev 0
 # Memoriser hp_prev chaque tick (pour detection mort tick suivant)
 execute as @a[tag=hp_sync] run scoreboard players operation @s hp_prev = @s hp_cur
 
