@@ -5,7 +5,8 @@
 
 # 0. Perimetre : survival/adventure uniquement
 tag @a remove hp_sync
-tag @a[gamemode=!creative,gamemode=!spectator] add hp_sync
+tag @a[gamemode=!spectator] add hp_sync
+tag @a[gamemode=creative] remove hp_sync
 execute as @a[tag=!hp_sync] run scoreboard players set @s hp_init 0
 
 # 1. Lire Health + AbsorptionAmount
