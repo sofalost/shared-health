@@ -64,9 +64,10 @@ scoreboard players set #target_abs timer 0
 execute as @a[tag=hp_abs_src] if score @s abs_cur > #target_abs timer run scoreboard players operation #target_abs timer = @s abs_cur
 
 # 9. SYNC par joueur (uniquement si un changement cette fenetre)
+# Note: soins retirés du partage — la regen naturelle (saturation) cascadait
+# en full-heal involontaire. Damage + mort + absorption restent partagés.
 scoreboard players set #has_change timer 0
 execute if entity @a[tag=hp_changed] run scoreboard players set #has_change timer 1
-execute if entity @a[tag=hp_healed] run scoreboard players set #has_change timer 1
 execute if entity @a[tag=hp_abs_src] run scoreboard players set #has_change timer 1
 execute if score #has_change timer matches 1 as @a[tag=hp_sync] run function shared_health:sync
 
