@@ -14,11 +14,11 @@ execute if score #diff timer matches 1.. if score @s hp_cur matches 1.. run func
 # Uniquement si pas de degats ce tick. hp_prev>0 exclut le respawn.
 scoreboard players operation #heal timer = #target_max timer
 scoreboard players operation #heal timer -= @s hp_cur
-execute if score #target_min timer matches 99999 if score #heal timer matches 1.. if score @s hp_prev matches 1.. run scoreboard players operation #amp timer = #heal timer
-execute if score #target_min timer matches 99999 if score #heal timer matches 1.. if score @s hp_prev matches 1.. run scoreboard players operation #amp timer -= 1 const
-execute if score #target_min timer matches 99999 if score #heal timer matches 1.. if score @s hp_prev matches 1.. run scoreboard players operation #amp timer /= 4 const
-execute if score #target_min timer matches 99999 if score #heal timer matches 1.. if score @s hp_prev matches 1.. store result storage shared_health:tmp amp int 1 run scoreboard players get #amp timer
-execute if score #target_min timer matches 99999 if score #heal timer matches 1.. if score @s hp_prev matches 1.. run function shared_health:apply_heal with storage shared_health:tmp
+execute if score #target_min timer matches 99999 if score #heal timer matches 1.. if score @s hp_sprev matches 1.. run scoreboard players operation #amp timer = #heal timer
+execute if score #target_min timer matches 99999 if score #heal timer matches 1.. if score @s hp_sprev matches 1.. run scoreboard players operation #amp timer -= 1 const
+execute if score #target_min timer matches 99999 if score #heal timer matches 1.. if score @s hp_sprev matches 1.. run scoreboard players operation #amp timer /= 4 const
+execute if score #target_min timer matches 99999 if score #heal timer matches 1.. if score @s hp_sprev matches 1.. store result storage shared_health:tmp amp int 1 run scoreboard players get #amp timer
+execute if score #target_min timer matches 99999 if score #heal timer matches 1.. if score @s hp_sprev matches 1.. run function shared_health:apply_heal with storage shared_health:tmp
 
 # --- ABSORPTION : joueur sans absorption + source genuine -> effect ---
 execute if score #target_abs timer matches 1.. if score @s abs_cur matches 0 run scoreboard players operation #abs_amp timer = #target_abs timer

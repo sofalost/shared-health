@@ -6,6 +6,7 @@
 
 scoreboard objectives add hp_cur dummy
 scoreboard objectives add hp_prev dummy
+scoreboard objectives add hp_sprev dummy
 scoreboard objectives add hp_delta dummy
 scoreboard objectives add hp_init dummy
 scoreboard objectives add abs_cur dummy
