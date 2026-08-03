@@ -1,20 +1,29 @@
 # ============================================================
-# shared_health — sync
-# Execute AS chaque joueur synchronise, quand #target_hp existe.
+# shared_health — sync (par joueur)
+# Cibles #target_min, #target_max, #target_abs definies dans tick.
+# Degats prioritaire sur soins : si #target_min != 99999, soins skip.
 # ============================================================
 
-# Ecart entre ce joueur et la cible (en HP entiers)
+# --- DEGATS : joueur au-dessus du MIN -> damage ---
 scoreboard players operation #diff timer = @s hp_cur
-scoreboard players operation #diff timer -= #target_hp timer
-
-# Deadzone 1 HP + joueur vivant -> stocker le montant et appliquer
-# int 1 : SNBT sans suffixe "f", la macro produit un nombre valide pour /damage
+scoreboard players operation #diff timer -= #target_min timer
 execute if score #diff timer matches 1.. if score @s hp_cur matches 1.. store result storage shared_health:tmp amount int 1 run scoreboard players get #diff timer
-execute if score #diff timer matches 1.. if score @s hp_cur matches 1.. run function shared_health:apply with storage shared_health:tmp
+execute if score #diff timer matches 1.. if score @s hp_cur matches 1.. run function shared_health:apply_damage with storage shared_health:tmp
 
-# Memoriser pour le prochain tick
-# Degats appliques -> hp_prev = cible (casse la boucle de feedback)
-execute if score #diff timer matches 1.. if score @s hp_cur matches 1.. run scoreboard players operation @s hp_prev = #target_hp timer
-# Pas de degats (ecart insuffisant ou joueur mort) -> hp_prev = hp_cur
-execute unless score #diff timer matches 1.. run scoreboard players operation @s hp_prev = @s hp_cur
-execute if score #diff timer matches 1.. unless score @s hp_cur matches 1.. run scoreboard players operation @s hp_prev = @s hp_cur
+# --- SOINS : joueur sous le MAX -> instant_health ---
+# Uniquement si pas de degats ce tick. hp_prev>0 exclut le respawn.
+scoreboard players operation #heal timer = #target_max timer
+scoreboard players operation #heal timer -= @s hp_cur
+execute if score #target_min timer matches 99999 if score #heal timer matches 1.. if score @s hp_prev matches 1.. run scoreboard players operation #amp timer = #heal timer
+execute if score #target_min timer matches 99999 if score #heal timer matches 1.. if score @s hp_prev matches 1.. run scoreboard players operation #amp timer -= 1 const
+execute if score #target_min timer matches 99999 if score #heal timer matches 1.. if score @s hp_prev matches 1.. run scoreboard players operation #amp timer /= 4 const
+execute if score #target_min timer matches 99999 if score #heal timer matches 1.. if score @s hp_prev matches 1.. store result storage shared_health:tmp amp int 1 run scoreboard players get #amp timer
+execute if score #target_min timer matches 99999 if score #heal timer matches 1.. if score @s hp_prev matches 1.. run function shared_health:apply_heal with storage shared_health:tmp
+
+# --- ABSORPTION : joueur sans absorption + source genuine -> effect ---
+execute if score #target_abs timer matches 1.. if score @s abs_cur matches 0 run scoreboard players operation #abs_amp timer = #target_abs timer
+execute if score #target_abs timer matches 1.. if score @s abs_cur matches 0 run scoreboard players operation #abs_amp timer -= 1 const
+execute if score #target_abs timer matches 1.. if score @s abs_cur matches 0 run scoreboard players operation #abs_amp timer /= 4 const
+execute if score #target_abs timer matches 1.. if score @s abs_cur matches 0 store result storage shared_health:tmp amp int 1 run scoreboard players get #abs_amp timer
+execute if score #target_abs timer matches 1.. if score @s abs_cur matches 0 run function shared_health:apply_abs with storage shared_health:tmp
+execute if score #target_abs timer matches 1.. if score @s abs_cur matches 0 run tag @s add hp_abs_given

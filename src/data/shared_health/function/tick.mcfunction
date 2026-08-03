@@ -1,51 +1,58 @@
 # ============================================================
 # shared_health — tick
 # MC 26.2 / pack_format 107.1
-#
-# Principe : tous les joueurs partagent la meme barre de vie.
-# Quand un joueur prend des degats, tous les autres aussi.
-#
-# Methode : damage-only. On lit Health chaque tick, on prend la
-# valeur la plus basse parmi les joueurs qui ont bouge, et on
-# inflige la difference aux autres via /damage (macro).
-#
-# NB : `store result entity @s Health` ne marche PAS sur les
-# joueurs (NBT joueur en lecture seule). D'ou /damage.
-#
-# Le soin n'est pas propage (pas de moyen precis de soigner).
-# Mort/respawn non propages (filtre hp_cur ET hp_prev > 0).
 # ============================================================
 
 # 0. Perimetre : survival/adventure uniquement
 tag @a remove hp_sync
 tag @a[gamemode=!creative,gamemode=!spectator] add hp_sync
-
-# Creative/spectator : re-amorcage force au retour en survie
 execute as @a[tag=!hp_sync] run scoreboard players set @s hp_init 0
 
-# 1. Lire la sante courante (HP entiers, pas de dixiemes)
+# 1. Lire Health + AbsorptionAmount
 execute as @a[tag=hp_sync] store result score @s hp_cur run data get entity @s Health 1
+execute as @a[tag=hp_sync] store result score @s abs_cur run data get entity @s AbsorptionAmount 1
 
-# 2. Amorcage : nouveau joueur -> hp_prev = hp_cur (pas de faux delta)
+# 2. Amorcage
 execute as @a[tag=hp_sync] unless score @s hp_init matches 1 run scoreboard players operation @s hp_prev = @s hp_cur
+execute as @a[tag=hp_sync] unless score @s hp_init matches 1 run scoreboard players operation @s abs_prev = @s abs_cur
 execute as @a[tag=hp_sync] unless score @s hp_init matches 1 run scoreboard players set @s hp_init 1
 
-# 3. Delta = changement ce tick
+# 3. Deltas
 execute as @a[tag=hp_sync] run scoreboard players operation @s hp_delta = @s hp_cur
 execute as @a[tag=hp_sync] run scoreboard players operation @s hp_delta -= @s hp_prev
+execute as @a[tag=hp_sync] run scoreboard players operation @s abs_delta = @s abs_cur
+execute as @a[tag=hp_sync] run scoreboard players operation @s abs_delta -= @s abs_prev
 
-# 4. Marquer les joueurs dont la vie a change
-#    Filtre : hp_cur ET hp_prev > 0 (ignore mort/respawn)
+# 4. MORT SYNC : joueur passe a 0 HP (hp_cur=0, hp_prev>0)
+#    -> tout le monde meurt (pas de respawn instantane/sync)
+tag @a remove hp_died
+execute as @a[tag=hp_sync] if score @s hp_cur matches 0 if score @s hp_prev matches 1.. run tag @s add hp_died
+execute if entity @a[tag=hp_died] as @a[tag=hp_sync] run damage @s 1000 minecraft:generic_kill
+
+# 5. CIBLE DEGATS : MIN parmi ceux qui ont perdu de la vie
 tag @a remove hp_changed
-execute as @a[tag=hp_sync] unless score @s hp_delta matches 0 if score @s hp_cur matches 1.. if score @s hp_prev matches 1.. run tag @s add hp_changed
+execute as @a[tag=hp_sync] if score @s hp_delta matches ..-1 if score @s hp_cur matches 1.. if score @s hp_prev matches 1.. run tag @s add hp_changed
+scoreboard players set #target_min timer 99999
+execute as @a[tag=hp_changed] if score @s hp_cur < #target_min timer run scoreboard players operation #target_min timer = @s hp_cur
 
-# 5. Cible = sante la plus basse parmi les joueurs modifies
-scoreboard players set #target_hp timer 99999
-execute as @a[tag=hp_changed] if score @s hp_cur < #target_hp timer run scoreboard players operation #target_hp timer = @s hp_cur
+# 6. CIBLE SOINS : MAX parmi ceux qui ont gagne >= 2 HP (filtre regen 1 HP/tick)
+tag @a remove hp_healed
+execute as @a[tag=hp_sync] if score @s hp_delta matches 2.. if score @s hp_prev matches 1.. run tag @s add hp_healed
+scoreboard players set #target_max timer 0
+execute as @a[tag=hp_healed] if score @s hp_cur > #target_max timer run scoreboard players operation #target_max timer = @s hp_cur
 
-# 6. Sync : chaque joueur au-dessus de la cible encaisse la difference
-execute if score #target_hp timer matches ..99998 as @a[tag=hp_sync] run function shared_health:sync
+# 7. ABSORPTION : nettoyer tags expires + source = gain genuine (pas du datapack)
+execute as @a[tag=hp_sync,tag=hp_abs_given] if score @s abs_cur matches 0 run tag @s remove hp_abs_given
+tag @a remove abs_gained
+execute as @a[tag=hp_sync,tag=!hp_abs_given] if score @s abs_delta matches 1.. run tag @s add abs_gained
+scoreboard players set #target_abs timer 0
+execute as @a[tag=abs_gained] if score @s abs_cur > #target_abs timer run scoreboard players operation #target_abs timer = @s abs_cur
 
-# 7. Pas de sync ce tick -> memoriser tel quel
-#    (le cas sync est traite dans sync.mcfunction, par joueur)
-execute if score #target_hp timer matches 99999 as @a[tag=hp_sync] run scoreboard players operation @s hp_prev = @s hp_cur
+# 8. SYNC par joueur (skip si mort ce tick — tout le monde meurt deja)
+execute unless entity @a[tag=hp_died] as @a[tag=hp_sync] run function shared_health:sync
+
+# 9. Relecture + memorisation (casse le feedback loop)
+execute as @a[tag=hp_sync] store result score @s hp_cur run data get entity @s Health 1
+execute as @a[tag=hp_sync] store result score @s abs_cur run data get entity @s AbsorptionAmount 1
+execute as @a[tag=hp_sync] run scoreboard players operation @s hp_prev = @s hp_cur
+execute as @a[tag=hp_sync] run scoreboard players operation @s abs_prev = @s abs_cur
